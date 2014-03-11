@@ -1,0 +1,196 @@
+<!DOCTYPE HTML>
+<html ng-app="battleCalc" style="height: 100%">
+    <head>
+        <title>Odds Calc</title>
+        <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1">
+        <style>
+            html,body {
+                width: 100%;
+                height: 100%;
+                padding: 0px;
+                margin: 0px;
+                vertical-align: middle;
+                text-align: center;
+            }
+            .counter{
+                border: solid 1px black;
+                margin: 3px;
+                width: 1.5cm;
+                height: 1.5cm;
+                float:left;
+                line-height: 1.5cm;
+            }
+            .buttons{
+                width: 50%;
+            }
+            .mod {
+                width: 1.5cm;
+            }
+            td.stack {
+                width: 50%;
+                height: 40%;
+            }
+
+            .attack {
+                background-color: #ff8080;
+            }
+
+            .defence {
+                background-color: #a0a0a0;
+            }
+
+            .selected {
+                background-color: #8080ff;
+            }
+            .ratio {
+                height:10%;
+                border: solid 1px black;
+            }
+            .ratio-value{
+                width: 75%;
+                font-size:200%; 
+                margin-left:10px; 
+                white-space:pre
+            }
+            .middle {
+                background-color: yellow;
+            }
+            .fill {
+                width:100%;
+                height:100%;
+            }
+            .border {
+                border-collapse: collapse;
+                border: solid 1px black;
+            }
+            .border >tbody>tr> td {
+                border: solid 1px black;
+            }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.13/angular.min.js"></script>
+        <script type="text/javascript">
+            function format(v) {
+                return Math.round(v * 100) / 100;
+            }
+            var app = angular.module('battleCalc', []);
+            app.controller('calc', function($scope) {
+                function sum(list) {
+                    var sum = 0;
+                    for (var i = 0; i < list.length; i++) {
+                        var v = list[i].value;
+                        var m = list[i].mod;
+                        v = (m < 0 ? v/-m : v*m);
+                        sum += v;
+                    }
+                    return sum;
+                }
+                $scope.ratioSum = function() {
+                    return sum($scope.attack, $scope.attackMulti) + sum($scope.defence, $scope.defenceMulti);
+                };
+                $scope.$watch('ratioSum()', function() {
+                    var s = {
+                        a: sum($scope.attack),
+                        b: sum($scope.defence)
+                    };
+                    var m = Math.min(s.a, s.b);
+                    m = (m === 0 ? 1 : m);
+                    var raw = {
+                        a: s.a / m,
+                        b: s.b / m
+                    };
+                    var rounded = {
+                        a: Math.round(raw.a),
+                        b: Math.round(raw.b)
+                    }
+                    var ratio = Math.max(rounded.a, rounded.b);
+                    function isMiddle(v) {
+                        return (v - Math.floor(v) === 0.5);
+                    }
+                    $scope.ratio = {
+                        sum: {
+                            a: format(s.a),
+                            b: format(s.b)
+                        },
+                        raw: {
+                            a: format(raw.a),
+                            b: format(raw.b)
+                        },
+                        isMiddle: isMiddle(raw.a) || isMiddle(raw.b),
+                        rounded: rounded
+                    };
+                });
+                $scope.multi = [-5, -4, -3, -2, 1, 2, 3, 4, 5, 6];
+                $scope.rows = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+                $scope.add = function(list, value) {
+                    $scope[list].push({
+                        value: value,
+                        mod: $scope.mod[list]
+                    });
+                };
+                $scope.remove = function(list, idx) {
+                    list.splice(idx, 1);
+                };
+                $scope.toggle = function(index,type) {
+                    $scope.mod[type] = ($scope.mod[type] === $scope.multi[index] ? 1 : $scope.multi[index]);
+                };
+                $scope.reset = function() {
+                    $scope.attack = [];
+                    $scope.defence = [];
+                    $scope.mod = {
+			attack: 1,
+			defence: 1
+		    };
+                };
+                $scope.showRatio = function(o) {
+                    return o === undefined ? '' : Math.round(o.a * 100) / 100 + ' : ' + Math.round(o.b * 100) / 100;
+                };
+                $scope.modFmt = function(v) {
+                    return v < 0 ? '1/' + -v : v;
+                };
+                $scope.reset();
+                x = $scope;
+            });
+        </script>
+    </head>
+    <body ng-controller="calc">
+        <table class="fill border">
+            <tr>
+                <td class="stack" valign="top">&nbsp;
+                    <div class="counter attack" ng-repeat="v in attack"  ng-click="remove(attack,$index)">
+                        {{v.value}}{{v.mod == 1 ? '' : (v.mod < 0 ? '/' + -v.mod: '*'+v.mod)}}
+                    </div>
+                </td>
+                <td class="buttons" rowspan="3">
+                    <table class="fill border">
+                        <tr ng-repeat="value in rows">
+                            <td class="attack" ng-click="add('attack', value)">{{value}}</td>
+                            <td class="mod {{mod.attack==multi[$index]?'selected':''}}" ng-click="toggle($index,'attack')">{{modFmt(multi[$index])}}</td>
+                            <td class="mod {{mod.defence==multi[$index]?'selected':''}}" ng-click="toggle($index,'defence')">{{modFmt(multi[$index])}}</td>
+                            <td class="defence" ng-click="add('defence', value)">{{value}}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td ng-click="reset()" class="ratio {{ratio.isMiddle ? 'middle':''}}">
+                    <table class="fill">
+                        <tr>
+                            <td align="right">{{ratio.sum.a}}</td><td width="1%">:</td><td align="left" width="1%">{{ratio.sum.b}}</td> 
+                            <td class="ratio-value" rowspan="2">{{showRatio(ratio.rounded)}}</td>
+                        </tr>
+                        <tr>
+                            <td align="right">{{ratio.raw.a}}</td><td>:</td><td align="left">{{ratio.raw.b}}</td> 
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td class="stack" valign="bottom">&nbsp;
+                    <div class="counter defence" ng-repeat="v in defence" ng-click="remove(defence,$index)">
+                        {{v.value}}{{v.mod == 1 ? '' : (v.mod < 0 ? '/' + -v.mod: '*'+v.mod)}}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
