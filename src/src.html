@@ -26,9 +26,19 @@
             .mod {
                 width: 1.5cm;
             }
+            .globalMod {
+                position:absolute;
+                bottom:0;
+                right:0;
+                width: 1cm;
+                height: 1cm;
+                line-height: 1cm;
+                background-color: #8080ff;
+            }
             td.stack {
                 width: 50%;
                 height: 40%;
+                position:relative;
             }
 
             .attack {
@@ -74,23 +84,26 @@
             }
             var app = angular.module('battleCalc', []);
             app.controller('calc', function($scope) {
+                function modify(v,m) {
+                    return (m < 0 ? v/-m : v*m);
+                }
                 function sum(list) {
                     var sum = 0;
                     for (var i = 0; i < list.length; i++) {
                         var v = list[i].value;
                         var m = list[i].mod;
-                        v = (m < 0 ? v/-m : v*m);
-                        sum += v;
+                        sum += modify(v,m);
                     }
                     return sum;
                 }
                 $scope.ratioSum = function() {
-                    return sum($scope.attack, $scope.attackMulti) + sum($scope.defence, $scope.defenceMulti);
+                    return modify(sum($scope.attack), $scope.globalMod.attack) 
+                        + modify(sum($scope.defence), $scope.globalMod.defence);
                 };
                 $scope.$watch('ratioSum()', function() {
                     var s = {
-                        a: sum($scope.attack),
-                        b: sum($scope.defence)
+                        a: modify(sum($scope.attack), $scope.globalMod.attack),
+                        b: modify(sum($scope.defence), $scope.globalMod.defence),
                     };
                     var m = Math.min(s.a, s.b);
                     m = (m === 0 ? 1 : m);
@@ -127,19 +140,27 @@
                         mod: $scope.mod[list]
                     });
                 };
-                $scope.remove = function(list, idx) {
+                $scope.remove = function(list, idx, event) {
                     list.splice(idx, 1);
+                    event.stopPropagation();
                 };
                 $scope.toggle = function(index,type) {
                     $scope.mod[type] = ($scope.mod[type] === $scope.multi[index] ? 1 : $scope.multi[index]);
                 };
+		        $scope.toggleGlobal = function(type) {
+                    $scope.globalMod[type] = ($scope.mod[type] === $scope.globalMod[type] ? 1 : $scope.mod[type]);
+		        };
                 $scope.reset = function() {
                     $scope.attack = [];
                     $scope.defence = [];
+                    $scope.globalMod = {
+                        attack: 1,
+                        defence: 1
+                    };
                     $scope.mod = {
-			attack: 1,
-			defence: 1
-		    };
+            			attack: 1,
+            			defence: 1
+        		    };
                 };
                 $scope.showRatio = function(o) {
                     return o === undefined ? '' : Math.round(o.a * 100) / 100 + ' : ' + Math.round(o.b * 100) / 100;
@@ -148,17 +169,17 @@
                     return v < 0 ? '1/' + -v : v;
                 };
                 $scope.reset();
-                x = $scope;
             });
         </script>
     </head>
     <body ng-controller="calc">
         <table class="fill border">
             <tr>
-                <td class="stack" valign="top">&nbsp;
-                    <div class="counter attack" ng-repeat="v in attack"  ng-click="remove(attack,$index)">
+                <td class="stack" valign="top" ng-click="toggleGlobal('attack')">&nbsp;
+                    <div class="counter attack" ng-repeat="v in attack"  ng-click="remove(attack,$index,$event)">
                         {{v.value}}{{v.mod == 1 ? '' : (v.mod < 0 ? '/' + -v.mod: '*'+v.mod)}}
                     </div>
+                    <div class="globalMod" ng-if="globalMod.attack != 1">{{modFmt(globalMod.attack)}}</div>
                 </td>
                 <td class="buttons" rowspan="3">
                     <table class="fill border">
@@ -185,10 +206,11 @@
                 </td>
             </tr>
             <tr>
-                <td class="stack" valign="bottom">&nbsp;
-                    <div class="counter defence" ng-repeat="v in defence" ng-click="remove(defence,$index)">
+                <td class="stack" valign="bottom"  ng-click="toggleGlobal('defence')">&nbsp;
+                    <div class="counter defence" ng-repeat="v in defence" ng-click="remove(defence,$index,$event)">
                         {{v.value}}{{v.mod == 1 ? '' : (v.mod < 0 ? '/' + -v.mod: '*'+v.mod)}}
                     </div>
+                    <div class="globalMod" ng-if="globalMod.defence != 1">{{modFmt(globalMod.defence)}}</div>
                 </td>
             </tr>
         </table>
